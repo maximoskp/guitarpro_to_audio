@@ -33,7 +33,8 @@ gp_files_list = [f for f in os.listdir(gp_files_path) if not f.startswith('.')]
 # https://ourcodeworld.com/articles/read/1171/how-to-convert-any-guitar-pro-tab-file-gp-gp3-gp5-gpx-to-midi-from-the-command-line-using-musescore-3
 # e.g., for windows
 # c:\Program Files\MuseScore 3\bin\MuseScore3.exe
-converter_script = '/Applications/MuseScore\ 4.app/Contents/MacOS/mscore'
+# converter_script = '/Applications/MuseScore\ 4.app/Contents/MacOS/mscore'
+converter_script = '/usr/bin/mscore'
 
 def get_track_info_from_gp_file(f):
     song = gp.parse(f)
