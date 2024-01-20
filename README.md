@@ -23,6 +23,6 @@ While seperating the tracks, it identifies the bass track and performs multiple 
 
 2. Then copy gp files with no subfolders in the ```/files/gp``` folder.
 
-3. Define executable for musescore in ```gp2midi2audio.py``` and run this script.
+3. Define executable for musescore in ```gp2midi2audio.py``` or ```gp2altbass_audio.py``` and run this script.
 
 The ```GuitarProToMidi``` executable might not work in a non-unix OS. Please consult the original github repo given above if things don't work out regarding this executable.
