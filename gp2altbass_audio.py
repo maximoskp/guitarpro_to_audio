@@ -6,6 +6,7 @@ import re
 import librosa
 import soundfile
 import json
+from gpmiditools import gp_tools, midi_tools
 
 # global audio output variables
 sample_rate = 8000
@@ -34,38 +35,9 @@ gp_files_list = [f for f in os.listdir(gp_files_path) if not f.startswith('.')]
 # for Linux
 converter_script = '/usr/bin/mscore'
 
-def get_track_info_from_gp_file(f):
-    song = gp.parse(f)
-    info_dictionary = {}
-    for i, t in enumerate(song.tracks):
-        info_dictionary[ 'track_' + str(i) ] = {}
-        info_dictionary[ 'track_' + str(i) ]['type'] = None
-        if t.isPercussionTrack:
-            info_dictionary[ 'track_' + str(i) ]['type'] = 'percussion'
-        else:
-            # get number of strings and tuning
-            if len(t.strings) == 6:
-                if t.strings[0].value >= 59:
-                    info_dictionary[ 'track_' + str(i) ]['type'] = 'guitar'
-                else:
-                    info_dictionary[ 'track_' + str(i) ]['type'] = 'bass'
-            else:
-                if t.strings[0].value < 59:
-                    info_dictionary[ 'track_' + str(i) ]['type'] = 'bass'
-                else:
-                    info_dictionary[ 'track_' + str(i) ]['type'] = 'other'
-    return info_dictionary
-# end get_track_info_from_gp_file
-
-def alter_track(t, s, n):
-    # t: track to alter
-    # s: list of semitones to use randomly during alterations
-    # n: how many notes to alter for piece
-    return 0, 0
-
 for f in gp_files_list:
     # get list of instruments in gp file
-    info_dictionary = get_track_info_from_gp_file(gp_files_path + f)
+    info_dictionary = gp_tools.get_track_info_from_gp_file(gp_files_path + f)
     gp_final_name = f.replace('\'', '')
     os.rename( gp_files_path + f, gp_files_path + gp_final_name )
     gp_esc = re.escape(gp_final_name.replace('\'', ''))
@@ -93,26 +65,17 @@ for f in gp_files_list:
     audio_hi_fi = librosa.load(audio_song_files_path + audio_final_name, sr=sample_rate, mono=True)
     soundfile.write( audio_song_files_path + audio_final_name , audio_hi_fi[0] , sample_rate , audio_data_format )
     # mid to wav - for altered bass versions
+    alterations_dict = {}
     for alt_i in range(alterations_for_piece):
-        # initialize empty altered song
-        tmp_song = mido.MidiFile()
-        # add tracks to song and change bass track
-        for i, track in enumerate(song.tracks):
-            tmp_track_name = info_dictionary['track_' + str(i)]['type']
-            if tmp_track_name == 'bass':
-                alt_semitones, alt_timestamps = alter_track(track, alteration_semitones, how_many_notes_per_alteration)
-            tmp_song.tracks.append(track)
-            '''
-            tmp_track_name = track.name.replace('\'', '')
-            tmp_track_name = track.name.replace('.', '_')
-            tmp_track_name = track.name.replace(' ', '_')
-            if tmp_track_name == '':
-                tmp_track_name = 'unk'
-            '''
-        tmp_track_full_path = midi_song_files_path + 'alt_' + str(i) + '_' + midi_final_name + '.mid'
+        tmp_song, alteredNoteOnOffs = midi_tools.alter_notes( song, info_dictionary, n=10, s=[12, 7, 3, 6], track_name='bass' )
+        tmp_track_full_path = midi_song_files_path + 'alt_' + str(alt_i) + '_' + midi_final_name.replace('.', '_').replace(' ', '_') + '.mid'
         tmp_song.save( tmp_track_full_path )
-        audio_final_name = 'alt_' + str(i) + '_' + midi_final_name + '.wav'
+        audio_final_name = 'alt_' + str(alt_i) + '_' + midi_final_name.replace('.', '_').replace(' ', '_') + '.wav'
         subprocess.Popen(converter_script + ' ' + tmp_track_full_path + ' -o ' + audio_song_files_path + audio_final_name, shell=True).wait()
         audio_hi_fi = librosa.load(audio_song_files_path + audio_final_name, sr=sample_rate, mono=True)
         soundfile.write( audio_song_files_path + audio_final_name , audio_hi_fi[0] , sample_rate , audio_data_format )
-    
+        alterations_dict[audio_final_name] = []
+        for nof in alteredNoteOnOffs:
+            alterations_dict[audio_final_name].append(nof)
+    with open(audio_song_files_path + 'alterations.json', 'w') as fp:
+        json.dump(alterations_dict, fp)
